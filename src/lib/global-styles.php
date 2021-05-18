@@ -148,20 +148,6 @@ function gutenberg_experimental_global_styles_settings( $settings ) {
 	return $settings;
 }
 
-/**
- * Register CPT to store/access user data.
- *
- * @return array|undefined
- */
-function gutenberg_experimental_global_styles_register_user_cpt() {
-	if ( ! WP_Theme_JSON_Resolver::theme_has_support() ) {
-		return;
-	}
-
-	WP_Theme_JSON_Resolver::register_user_custom_post_type();
-}
-
-add_action( 'init', 'gutenberg_experimental_global_styles_register_user_cpt' );
 // This can be removed when plugin support requires WordPress 5.8.0+.
 if ( function_exists( 'get_block_editor_settings' ) ) {
 	add_filter( 'block_editor_settings_all', 'gutenberg_experimental_global_styles_settings', PHP_INT_MAX );
