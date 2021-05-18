@@ -13,17 +13,17 @@ class CompatibilityJSONParser {
 	 * @access public
 	 */
 	public function __construct() {
-		$this->include_files();
+        add_action( 'after_setup_theme', [ $this, 'include_files' ] );
 	}
 
 	/**
 	 * Require files.
 	 *
-	 * @access protected
+	 * @access public
 	 *
 	 * @return void
 	 */
-	protected function include_files() {
+	public function include_files() {
 		require_once __DIR__ . '/functions.php';
 
 		if ( ! function_exists( 'gutenberg_experimental_set' ) ) {
