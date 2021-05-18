@@ -1,0 +1,32 @@
+{
+	"name"        : "wptt/theme-json-parser",
+	"description" : "A package to allow classic theme to use `theme.json` files.",
+	"keywords"    : [ "wordpress" ],
+	"homepage"    : "https://github.com/WPTT/theme-json-parser",
+	"license"     : "GPL-2.0-or-later",
+	"authors"     : [
+		{
+			"name"     : "WordPress.org Themes Team",
+			"email"    : "themes@wordpress.org",
+			"homepage" : "https://make.wordpress.org/themes",
+			"role"     : "Developer"
+		}
+	],
+	"support"     : {
+		"issues" : "https://github.com/WPTT/theme-json-parser/issues"
+	},
+	"autoload"    : {
+		"psr-4" : {
+			"WPTT\\" : "src/"
+		}
+	},
+	"require"     : {
+		"php" : ">=5.6"
+	},
+	"require-dev": {
+		"composer/installers": "~1.0",
+		"dealerdirect/phpcodesniffer-composer-installer": "*",
+		"wp-coding-standards/wpcs": "*",
+		"wptrt/wpthemereview": "*"
+	}
+}
