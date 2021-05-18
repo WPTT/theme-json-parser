@@ -44,7 +44,7 @@ function gutenberg_experimental_global_styles_get_stylesheet( $tree, $type = 'al
 }
 
 /**
- * Fetches the preferences for each origin (core, theme, user)
+ * Fetches the preferences for each origin (core, theme)
  * and enqueues the resulting stylesheet.
  */
 function gutenberg_experimental_global_styles_enqueue_assets() {
@@ -78,15 +78,6 @@ function gutenberg_experimental_global_styles_enqueue_assets() {
 function gutenberg_experimental_global_styles_settings( $settings ) {
 	// Set what is the context for this data request.
 	$context = 'all';
-	if (
-		is_callable( 'get_current_screen' ) &&
-		function_exists( 'gutenberg_is_edit_site_page' ) &&
-		gutenberg_is_edit_site_page( get_current_screen()->id ) &&
-		WP_Theme_JSON_Resolver::theme_has_support() &&
-		gutenberg_supports_block_templates()
-	) {
-		$context = 'site-editor';
-	}
 
 	if (
 		defined( 'REST_REQUEST' ) &&
@@ -97,41 +88,10 @@ function gutenberg_experimental_global_styles_settings( $settings ) {
 		$context = 'mobile';
 	}
 
-	$origin = 'theme';
-	if (
-		WP_Theme_JSON_Resolver::theme_has_support() &&
-		gutenberg_supports_block_templates()
-	) {
-		// Only lookup for the user data if we need it.
-		$origin = 'user';
-	}
-	$consolidated = WP_Theme_JSON_Resolver::get_merged_data( $settings, $origin );
+	$consolidated = WP_Theme_JSON_Resolver::get_merged_data( $settings );
 
 	if ( 'mobile' === $context ) {
 		$settings['__experimentalStyles'] = $consolidated->get_raw_data()['styles'];
-	}
-
-	if ( 'site-editor' === $context ) {
-		$theme       = WP_Theme_JSON_Resolver::get_merged_data( $settings, 'theme' );
-		$user_cpt_id = WP_Theme_JSON_Resolver::get_user_custom_post_type_id();
-
-		$settings['__experimentalGlobalStylesUserEntityId'] = $user_cpt_id;
-		$settings['__experimentalGlobalStylesBaseStyles']   = $theme->get_raw_data();
-	}
-
-	if (
-		'site-editor' !== $context &&
-		'mobile' !== $context &&
-		( WP_Theme_JSON_Resolver::theme_has_support() || get_theme_support( 'experimental-link-color' ) )
-	) {
-		$block_styles  = array( 'css' => gutenberg_experimental_global_styles_get_stylesheet( $consolidated, 'block_styles' ) );
-		$css_variables = array(
-			'css'                     => gutenberg_experimental_global_styles_get_stylesheet( $consolidated, 'css_variables' ),
-			'__experimentalNoWrapper' => true,
-		);
-
-		$settings['styles'][] = $css_variables;
-		$settings['styles'][] = $block_styles;
 	}
 
 	$settings['__experimentalFeatures'] = $consolidated->get_settings();
@@ -157,81 +117,10 @@ if ( function_exists( 'get_block_editor_settings' ) ) {
 }
 add_action( 'wp_enqueue_scripts', 'gutenberg_experimental_global_styles_enqueue_assets' );
 
-
-/**
- * Sanitizes global styles user content removing unsafe rules.
- *
- * @param string $content Post content to filter.
- * @return string Filtered post content with unsafe rules removed.
- */
-function gutenberg_global_styles_filter_post( $content ) {
-	$decoded_data        = json_decode( stripslashes( $content ), true );
-	$json_decoding_error = json_last_error();
-	if (
-		JSON_ERROR_NONE === $json_decoding_error &&
-		is_array( $decoded_data ) &&
-		isset( $decoded_data['isGlobalStylesUserThemeJSON'] ) &&
-		$decoded_data['isGlobalStylesUserThemeJSON']
-	) {
-		unset( $decoded_data['isGlobalStylesUserThemeJSON'] );
-		$theme_json = new WP_Theme_JSON( $decoded_data );
-		$theme_json->remove_insecure_properties();
-		$data_to_encode                                = $theme_json->get_raw_data();
-		$data_to_encode['isGlobalStylesUserThemeJSON'] = true;
-		return wp_json_encode( $data_to_encode );
-	}
-	return $content;
-}
-
-/**
- * Adds the filters to filter global styles user theme.json.
- */
-function gutenberg_global_styles_kses_init_filters() {
-	add_filter( 'content_save_pre', 'gutenberg_global_styles_filter_post' );
-}
-
-/**
- * Removes the filters to filter global styles user theme.json.
- */
-function gutenberg_global_styles_kses_remove_filters() {
-	remove_filter( 'content_save_pre', 'gutenberg_global_styles_filter_post' );
-}
-
-/**
- * Register global styles kses filters if the user does not have unfiltered_html capability.
- *
- * @uses render_block_core_navigation()
- * @throws WP_Error An WP_Error exception parsing the block definition.
- */
-function gutenberg_global_styles_kses_init() {
-	gutenberg_global_styles_kses_remove_filters();
-	if ( ! current_user_can( 'unfiltered_html' ) ) {
-		gutenberg_global_styles_kses_init_filters();
-	}
-}
-
 /**
  * This filter is the last being executed on force_filtered_html_on_import.
  * If the input of the filter is true it means we are in an import situation and should
  * enable kses, independently of the user capabilities.
- * So in that case we call gutenberg_global_styles_kses_init_filters;
- *
- * @param string $arg Input argument of the filter.
- * @return string Exactly what was passed as argument.
- */
-function gutenberg_global_styles_force_filtered_html_on_import_filter( $arg ) {
-	// force_filtered_html_on_import is true we need to init the global styles kses filters.
-	if ( $arg ) {
-		gutenberg_global_styles_kses_init_filters();
-	}
-	return $arg;
-}
-
-/**
- * This filter is the last being executed on force_filtered_html_on_import.
- * If the input of the filter is true it means we are in an import situation and should
- * enable kses, independently of the user capabilities.
- * So in that case we call gutenberg_global_styles_kses_init_filters;
  *
  * @param bool $allow_css       Whether the CSS in the test string is considered safe.
  * @param bool $css_test_string The CSS string to test..
@@ -259,9 +148,6 @@ function gutenberg_global_styles_include_support_for_wp_variables( $allow_css, $
 	return ! ! preg_match( '/^var\(--wp-[a-zA-Z0-9\-]+\)$/', trim( $parts[1] ) );
 }
 
-
-add_action( 'init', 'gutenberg_global_styles_kses_init' );
-add_action( 'set_current_user', 'gutenberg_global_styles_kses_init' );
 add_filter( 'force_filtered_html_on_import', 'gutenberg_global_styles_force_filtered_html_on_import_filter', 999 );
 add_filter( 'safecss_filter_attr_allow_css', 'gutenberg_global_styles_include_support_for_wp_variables', 10, 2 );
 // This filter needs to be executed last.

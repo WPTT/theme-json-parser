@@ -34,21 +34,6 @@ class WP_Theme_JSON_Resolver {
 	private static $theme_has_support = null;
 
 	/**
-	 * Container for data coming from the user.
-	 *
-	 * @var WP_Theme_JSON
-	 */
-	private static $user = null;
-
-	/**
-	 * Stores the ID of the custom post type
-	 * that holds the user data.
-	 *
-	 * @var integer
-	 */
-	private static $user_custom_post_type_id = null;
-
-	/**
 	 * Structure to hold i18n metadata.
 	 *
 	 * @var Array
@@ -296,152 +281,29 @@ class WP_Theme_JSON_Resolver {
 	}
 
 	/**
-	 * Returns the CPT that contains the user's origin config
-	 * for the current theme or a void array if none found.
-	 *
-	 * It can also create and return a new draft CPT.
-	 *
-	 * @param bool  $should_create_cpt Whether a new CPT should be created if no one was found.
-	 *                                 False by default.
-	 * @param array $post_status_filter Filter CPT by post status.
-	 *                                  ['publish'] by default, so it only fetches published posts.
-	 *
-	 * @return array Custom Post Type for the user's origin config.
-	 */
-	private static function get_user_data_from_custom_post_type( $should_create_cpt = false, $post_status_filter = array( 'publish' ) ) {
-		$user_cpt         = array();
-		$post_type_filter = 'wp_global_styles';
-		$recent_posts     = wp_get_recent_posts(
-			array(
-				'numberposts' => 1,
-				'orderby'     => 'date',
-				'order'       => 'desc',
-				'post_type'   => $post_type_filter,
-				'post_status' => $post_status_filter,
-				'tax_query'   => array(
-					array(
-						'taxonomy' => 'wp_theme',
-						'field'    => 'name',
-						'terms'    => wp_get_theme()->get_stylesheet(),
-					),
-				),
-			)
-		);
-
-		if ( is_array( $recent_posts ) && ( count( $recent_posts ) === 1 ) ) {
-			$user_cpt = $recent_posts[0];
-		} elseif ( $should_create_cpt ) {
-			$cpt_post_id = wp_insert_post(
-				array(
-					'post_content' => '{"version": ' . WP_Theme_JSON::LATEST_SCHEMA . ', "isGlobalStylesUserThemeJSON": true }',
-					'post_status'  => 'publish',
-					'post_title'   => __( 'Custom Styles', 'default' ),
-					'post_type'    => $post_type_filter,
-					'post_name'    => 'wp-global-styles-' . urlencode( wp_get_theme()->get_stylesheet() ),
-					'tax_input'    => array(
-						'wp_theme' => array( wp_get_theme()->get_stylesheet() ),
-					),
-				),
-				true
-			);
-			$user_cpt    = get_post( $cpt_post_id, ARRAY_A );
-		}
-
-		return $user_cpt;
-	}
-
-	/**
-	 * Returns the user's origin config.
-	 *
-	 * @return WP_Theme_JSON Entity that holds user data.
-	 */
-	public static function get_user_data() {
-		if ( null !== self::$user ) {
-			return self::$user;
-		}
-
-		$config   = array();
-		$user_cpt = self::get_user_data_from_custom_post_type();
-		if ( array_key_exists( 'post_content', $user_cpt ) ) {
-			$decoded_data = json_decode( $user_cpt['post_content'], true );
-
-			$json_decoding_error = json_last_error();
-			if ( JSON_ERROR_NONE !== $json_decoding_error ) {
-				error_log( 'Error when decoding user schema: ' . json_last_error_msg() );
-				return new WP_Theme_JSON( $config );
-			}
-
-			// Very important to verify if the flag isGlobalStylesUserThemeJSON is true.
-			// If is not true the content was not escaped and is not safe.
-			if (
-				is_array( $decoded_data ) &&
-				isset( $decoded_data['isGlobalStylesUserThemeJSON'] ) &&
-				$decoded_data['isGlobalStylesUserThemeJSON']
-			) {
-				unset( $decoded_data['isGlobalStylesUserThemeJSON'] );
-				$config = $decoded_data;
-			}
-		}
-		self::$user = new WP_Theme_JSON( $config );
-
-		return self::$user;
-	}
-
-	/**
 	 * There are three sources of data (origins) for a site:
-	 * core, theme, and user. The user's has higher priority
-	 * than the theme's, and the theme's higher than core's.
+	 * core and theme. The theme's has higher priority
+	 * than core's.
 	 *
-	 * Unlike the getters {@link get_core_data},
-	 * {@link get_theme_data}, and {@link get_user_data},
+	 * Unlike the getters {@link get_core_data} and {@link get_theme_data},
 	 * this method returns data after it has been merged
 	 * with the previous origins. This means that if the same piece of data
-	 * is declared in different origins (user, theme, and core),
+	 * is declared in different origins (theme and core),
 	 * the last origin overrides the previous.
 	 *
-	 * For example, if the user has set a background color
-	 * for the paragraph block, and the theme has done it as well,
-	 * the user preference wins.
-	 *
-	 * @param array  $settings Existing block editor settings.
-	 *                         Empty array by default.
-	 * @param string $origin To what level should we merge data.
-	 *                       Valid values are 'theme' or 'user'.
-	 *                       Default is 'user'.
+	 * @param array $settings Existing block editor settings.
+	 *                        Empty array by default.
 	 *
 	 * @return WP_Theme_JSON
 	 */
-	public static function get_merged_data( $settings = array(), $origin = 'user' ) {
+	public static function get_merged_data( $settings = array() ) {
 		$theme_support_data = WP_Theme_JSON::get_from_editor_settings( $settings );
 
 		$result = new WP_Theme_JSON();
 		$result->merge( self::get_core_data() );
 		$result->merge( self::get_theme_data( $theme_support_data ) );
 
-		if ( 'user' === $origin ) {
-			$result->merge( self::get_user_data() );
-		}
-
 		return $result;
-	}
-
-	/**
-	 * Returns the ID of the custom post type
-	 * that stores user data.
-	 *
-	 * @return integer
-	 */
-	public static function get_user_custom_post_type_id() {
-		if ( null !== self::$user_custom_post_type_id ) {
-			return self::$user_custom_post_type_id;
-		}
-
-		$user_cpt = self::get_user_data_from_custom_post_type( true );
-		if ( array_key_exists( 'ID', $user_cpt ) ) {
-			self::$user_custom_post_type_id = $user_cpt['ID'];
-		}
-
-		return self::$user_custom_post_type_id;
 	}
 
 	/**
@@ -492,12 +354,10 @@ class WP_Theme_JSON_Resolver {
 	 * Cleans the cached data so it can be recalculated.
 	 */
 	public static function clean_cached_data() {
-		self::$core                     = null;
-		self::$theme                    = null;
-		self::$user                     = null;
-		self::$user_custom_post_type_id = null;
-		self::$theme_has_support        = null;
-		self::$theme_json_i18n          = null;
+		self::$core              = null;
+		self::$theme             = null;
+		self::$theme_has_support = null;
+		self::$theme_json_i18n   = null;
 	}
 
 }
