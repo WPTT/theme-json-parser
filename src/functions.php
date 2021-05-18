@@ -16,60 +16,6 @@ if ( ! function_exists( 'gutenberg_supports_block_templates' ) ) {
 	}
 }
 
-if ( ! function_exists( 'gutenberg_get_default_categories' ) ) {
-	/**
-	 * Returns the list of default categories for block types.
-	 *
-	 * This is a temporary solution until the Gutenberg plugin sets
-	 * the required WordPress version to 5.8.
-	 *
-	 * @see https://core.trac.wordpress.org/ticket/52920
-	 *
-	 * @since 10.5.0.
-	 *
-	 * @return array[] Array of categories for block types.
-	 */
-	function gutenberg_get_default_block_categories() {
-		return array(
-			array(
-				'slug'  => 'text',
-				'title' => _x( 'Text', 'block category', 'gutenberg' ),
-				'icon'  => null,
-			),
-			array(
-				'slug'  => 'media',
-				'title' => _x( 'Media', 'block category', 'gutenberg' ),
-				'icon'  => null,
-			),
-			array(
-				'slug'  => 'design',
-				'title' => _x( 'Design', 'block category', 'gutenberg' ),
-				'icon'  => null,
-			),
-			array(
-				'slug'  => 'widgets',
-				'title' => _x( 'Widgets', 'block category', 'gutenberg' ),
-				'icon'  => null,
-			),
-			array(
-				'slug'  => 'theme',
-				'title' => _x( 'Theme', 'block category', 'gutenberg' ),
-				'icon'  => null,
-			),
-			array(
-				'slug'  => 'embed',
-				'title' => _x( 'Embeds', 'block category', 'gutenberg' ),
-				'icon'  => null,
-			),
-			array(
-				'slug'  => 'reusable',
-				'title' => _x( 'Reusable Blocks', 'block category', 'gutenberg' ),
-				'icon'  => null,
-			),
-		);
-	}
-}
-
 if ( ! function_exists( 'gutenberg_get_default_block_editor_settings' ) ) {
 	/**
 	 * Returns the default block editor settings.
@@ -126,7 +72,6 @@ if ( ! function_exists( 'gutenberg_get_default_block_editor_settings' ) ) {
 			'alignWide'                             => get_theme_support( 'align-wide' ),
 			'allowedBlockTypes'                     => true,
 			'allowedMimeTypes'                      => get_allowed_mime_types(),
-			'blockCategories'                       => gutenberg_get_default_block_categories(),
 			'disableCustomColors'                   => get_theme_support( 'disable-custom-colors' ),
 			'disableCustomFontSizes'                => get_theme_support( 'disable-custom-font-sizes' ),
 			'disableCustomGradients'                => get_theme_support( 'disable-custom-gradients' ),

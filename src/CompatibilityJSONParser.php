@@ -13,7 +13,7 @@ class CompatibilityJSONParser {
 	 * @access public
 	 */
 	public function __construct() {
-        add_action( 'after_setup_theme', [ $this, 'include_files' ] );
+        add_action( 'wp', [ $this, 'include_files' ] );
 	}
 
 	/**
